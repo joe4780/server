@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 require('dotenv').config();
 
+// Get all users
 exports.getUsers = async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM users');
@@ -13,6 +14,7 @@ exports.getUsers = async (req, res) => {
   }
 };
 
+// Register a new user
 exports.register = async (req, res) => {
   const { username, password, role } = req.body;
   if (!username || !password || !role) {
@@ -30,8 +32,9 @@ exports.register = async (req, res) => {
   }
 };
 
+// Login user and update FCM token
 exports.login = async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, fcm_token } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'Invalid data' });
   }
@@ -51,6 +54,12 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+
+    if (fcm_token) {
+      const updateTokenQuery = 'UPDATE users SET fcm_token = ? WHERE id = ?';
+      await db.query(updateTokenQuery, [fcm_token, user.id]);
+    }
+
     const token = jwt.sign(
       { userId: user.id, role: user.role },
       process.env.JWT_SECRET || 'your_jwt_secret',
@@ -60,7 +69,7 @@ exports.login = async (req, res) => {
     res.status(200).json({
       token,
       userId: user.id,
-      role: user.role
+      role: user.role,
     });
   } catch (error) {
     console.error('Error logging in:', error);
