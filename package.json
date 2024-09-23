@@ -19,7 +19,8 @@
     "firebase-admin": "^12.5.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.11.2",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "ws": "^8.18.0"
   },
   "engines": {
     "node": ">=16.x"
