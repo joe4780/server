@@ -1,11 +1,6 @@
 const db = require('../db');
 const admin = require('firebase-admin');
 
-// Initialized Firebase Admin SDK 
-admin.initializeApp({
-  credential: admin.credential.applicationDefault(), 
-});
-
 exports.getUserNotifications = async (req, res) => {
   const userId = req.params.userId;
   const query = 'SELECT * FROM notifications WHERE user_id = ?';
@@ -62,6 +57,7 @@ exports.sendNotification = async (req, res) => {
     await db.query(query, [values]);
 
     // Fetch FCM tokens for the targeted users and send notifications
+    const failedNotifications = [];
     for (const userId of userIds) {
       const fcmToken = await getUserFcmToken(userId);
 
@@ -73,21 +69,35 @@ exports.sendNotification = async (req, res) => {
               title: 'New Notification',
               body: message,
             },
+            data: {
+              click_action: 'FLUTTER_NOTIFICATION_CLICK',
+              message: message,
+            },
           });
           console.log(`Successfully sent FCM notification to user ${userId}`);
         } catch (error) {
           console.error(`Error sending FCM notification to user ${userId}:`, error);
+          failedNotifications.push({ userId, error: error.message });
         }
+      } else {
+        failedNotifications.push({ userId, error: 'FCM token not found' });
       }
     }
 
-    res.status(201).json({ success: true, message: 'Notification sent!' });
+    if (failedNotifications.length > 0) {
+      res.status(207).json({
+        success: true,
+        message: 'Notifications sent with some failures',
+        failedNotifications,
+      });
+    } else {
+      res.status(201).json({ success: true, message: 'All notifications sent successfully' });
+    }
   } catch (error) {
     console.error('Error inserting notifications:', error);
     res.status(500).json({ error: 'Failed to insert notifications' });
   }
 };
-
 
 async function getUserFcmToken(userId) {
   const query = 'SELECT fcm_token FROM users WHERE id = ?';
