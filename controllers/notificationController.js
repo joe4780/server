@@ -77,6 +77,9 @@ exports.sendNotification = async (req, res) => {
           console.log(`Successfully sent FCM notification to user ${userId}`);
         } catch (error) {
           console.error(`Error sending FCM notification to user ${userId}:`, error);
+          if (error.code === 'messaging/registration-token-not-registered') {
+            await removeInvalidFcmToken(userId); // Remove invalid FCM token
+          }
           failedNotifications.push({ userId, error: error.message });
         }
       } else {
@@ -110,5 +113,15 @@ async function getUserFcmToken(userId) {
   } catch (error) {
     console.error('Error fetching FCM token:', error);
     return null;
+  }
+}
+
+async function removeInvalidFcmToken(userId) {
+  const query = 'UPDATE users SET fcm_token = NULL WHERE id = ?';
+  try {
+    await db.query(query, [userId]);
+    console.log(`Removed invalid FCM token for user ${userId}`);
+  } catch (error) {
+    console.error('Error removing FCM token:', error);
   }
 }
